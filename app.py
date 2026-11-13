@@ -132,6 +132,7 @@ def short(value, limit: int = 300) -> str:
 if run and agreement_id:
     messages = [task_message(agreement_id)]
     step = 0
+    error = None
     with st.status("Agent is working…", expanded=True) as status:
         try:
             for update in graph.stream({"messages": messages}, config=run_config(), stream_mode="updates"):
@@ -157,8 +158,9 @@ if run and agreement_id:
             status.update(label=f"Done in {step} steps · reasoning trace", state="complete", expanded=True)
         except Exception as exc:  # surface model/API errors in the UI
             status.update(label="Run failed", state="error")
-            st.error(f"{type(exc).__name__}: {exc}")
+            error = f"{type(exc).__name__}: {exc}"
     st.session_state["result"] = {
+        "error": error,
         "agreement_id": agreement_id,
         "findings": extract_findings(messages),
         "summary": message_text(messages[-1]) if len(messages) > 1 else "",
@@ -167,7 +169,11 @@ if run and agreement_id:
 
 # ---------------------------------------------------------------- results
 result = st.session_state.get("result")
-if result:
+if result and result.get("error"):
+    st.error(f"The model call failed, so no review was produced.\n\n{result['error']}")
+    if "401" in result["error"] or "Authentication" in result["error"]:
+        st.caption("The API key in the app's secrets was rejected by the provider. Check or replace it.")
+elif result:
     findings = result["findings"]
     st.subheader(f"Findings · {result['agreement_id']}")
     m1, m2, m3 = st.columns(3)
