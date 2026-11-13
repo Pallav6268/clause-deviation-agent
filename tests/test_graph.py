@@ -32,3 +32,17 @@ def test_loop_uses_tools_node(graph):
         for node in update
     ]
     assert nodes[0] == "agent" and "tools" in nodes and nodes[-1] == "agent"
+
+
+class FailingModel(ScriptedAgentModel):
+    """Stands in for a provider whose key is rejected."""
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        raise RuntimeError("401 - Authentication Fails")
+
+
+def test_falls_back_when_primary_model_fails():
+    graph = build_graph(FailingModel(), [ScriptedAgentModel()])
+    state = graph.invoke({"messages": [task_message("A-101")]}, config=run_config())
+    findings = {f["clause_key"]: f["severity"] for f in extract_findings(state["messages"])}
+    assert findings == EXPECTED["A-101"]

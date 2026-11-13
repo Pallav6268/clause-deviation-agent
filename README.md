@@ -69,7 +69,7 @@ export DEEPSEEK_API_KEY=...    # optional: DEEPSEEK_MODEL (default deepseek-chat
 export GROQ_API_KEY=...        # optional: GROQ_MODEL (default llama-3.3-70b-versatile)
 ```
 
-If several keys are set, the order is Claude → DeepSeek → Groq. Model IDs change over time; set `ANTHROPIC_MODEL` / `DEEPSEEK_MODEL` / `GROQ_MODEL` to a current one if the default is retired.
+If several keys are set, the first in the order Claude → DeepSeek → Groq is used and the rest are automatic fallbacks. Model IDs change over time; set `ANTHROPIC_MODEL` / `DEEPSEEK_MODEL` / `GROQ_MODEL` to a current one if the default is retired.
 
 ### Tracing with LangSmith
 

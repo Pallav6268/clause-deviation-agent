@@ -9,6 +9,8 @@ without tool calls, the loop ends.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import START, MessagesState, StateGraph
@@ -36,8 +38,11 @@ Procedure (follow it, and work in parallel where you can):
 MAX_STEPS = 40
 
 
-def build_graph(llm: BaseChatModel):
+def build_graph(llm: BaseChatModel, fallbacks: Sequence[BaseChatModel] = ()):
+    """Compile the agent. If the primary model fails (bad key, outage), each fallback is tried in order."""
     model = llm.bind_tools(TOOLS)
+    if fallbacks:
+        model = model.with_fallbacks([f.bind_tools(TOOLS) for f in fallbacks])
 
     def agent(state: MessagesState) -> dict:
         messages = [SystemMessage(SYSTEM_PROMPT), *state["messages"]]

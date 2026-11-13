@@ -51,7 +51,7 @@ def load_secrets_into_env() -> None:
 def load_agent(settings: tuple):
     # `settings` is only the cache key: the agent is rebuilt when the keys or models change.
     choice = get_model()
-    return build_graph(choice.llm), choice
+    return build_graph(choice.llm, choice.fallbacks), choice
 
 
 def settings_fingerprint() -> tuple:
