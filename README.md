@@ -7,7 +7,7 @@ its reasoning step by step.
 Built with **LangGraph** (reason → act → observe loop), **native tool calling**,
 **LangSmith** tracing and a **Streamlit** UI.
 
-> Live demo: _add your Streamlit URL here after deploying_
+> **Live demo:** https://clause-deviation-agent.streamlit.app
 
 ![CI](https://github.com/Pallav6268/clause-deviation-agent/actions/workflows/ci.yml/badge.svg)
 
