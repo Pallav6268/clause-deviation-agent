@@ -1,5 +1,5 @@
 from agent.documents import STORE, TEMPLATE_ID, parse_markdown
-from agent.tools import MISSING, compare_values, get_clause, list_clauses
+from agent.tools import MISSING, list_clauses, review_clause
 from agent.values import diff_values, extract_values
 
 
@@ -24,17 +24,19 @@ def test_placeholder_clause_allows_filled_values():
     assert result["values_deviate"] is False
 
 
-def test_compare_values_detects_grace_period_change():
-    result = compare_values.invoke({"agreement_id": "A-101", "clause_key": "possession"})
-    assert result["only_in_template"] == ["6 months"]
-    assert result["only_in_agreement"] == ["12 months"]
-    assert result["values_deviate"] is True
+def test_review_clause_detects_grace_period_change():
+    result = review_clause.invoke({"agreement_id": "A-101", "clause_key": "possession"})
+    check = result["value_check"]
+    assert check["only_in_template"] == ["6 months"]
+    assert check["only_in_agreement"] == ["12 months"]
+    assert check["values_deviate"] is True
+    assert "12 months" in result["agreement_text"] and "6 months" in result["template_text"]
 
 
 def test_missing_clause():
-    assert get_clause.invoke({"document_id": "B-204", "clause_key": "car_parking"}) == MISSING
-    result = compare_values.invoke({"agreement_id": "B-204", "clause_key": "car_parking"})
+    result = review_clause.invoke({"agreement_id": "B-204", "clause_key": "car_parking"})
     assert result["clause_missing_in_agreement"] is True
+    assert result["agreement_text"] == MISSING
 
 
 def test_list_clauses_returns_keys():

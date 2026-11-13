@@ -1,7 +1,7 @@
 """A rule-based stand-in for the language model, used when no API key is set.
 
 It drives the real graph and the real tools, deciding each step from the tool
-results it has seen. It only catches deviations visible to compare_values
+results it has seen. It only catches deviations visible to the value check
 (numbers and missing clauses). Wording changes need the live model, which is
 exactly the point of tier 2.
 """
@@ -51,12 +51,11 @@ class ScriptedAgentModel(BaseChatModel):
             )
         clauses = [c["key"] for c in listed[0]["output"]]
 
-        compared = {r["args"]["clause_key"]: r["output"] for r in results if r["name"] == "compare_values"}
+        compared = {r["args"]["clause_key"]: r["output"] for r in results if r["name"] == "review_clause"}
         if not compared:
-            calls = [call("compare_values", agreement_id=agreement_id, clause_key=k) for k in clauses]
-            calls += [call("get_clause", document_id=agreement_id, clause_key=k) for k in clauses]
+            calls = [call("review_clause", agreement_id=agreement_id, clause_key=k) for k in clauses]
             return AIMessage(
-                content=f"Checking all {len(clauses)} clauses in parallel: exact values plus the agreement wording.",
+                content=f"Reviewing all {len(clauses)} clauses in parallel: both texts plus an exact value check.",
                 tool_calls=calls,
             )
 
@@ -109,7 +108,7 @@ def _tool_results(messages: list[BaseMessage]) -> list[dict]:
 
 
 def _deviates(result: dict) -> bool:
-    return bool(result.get("clause_missing_in_agreement") or result.get("values_deviate"))
+    return bool(result.get("clause_missing_in_agreement") or result.get("value_check", {}).get("values_deviate"))
 
 
 def _finding(key: str, result: dict) -> dict:
@@ -125,7 +124,7 @@ def _finding(key: str, result: dict) -> dict:
     return {
         "clause_key": key,
         "severity": severity,
-        "template_says": ", ".join(result["only_in_template"]) or "-",
-        "agreement_says": ", ".join(result["only_in_agreement"]) or "-",
+        "template_says": ", ".join(result["value_check"]["only_in_template"]) or "-",
+        "agreement_says": ", ".join(result["value_check"]["only_in_agreement"]) or "-",
         "explanation": "Values differ from the standard template; review before signing.",
     }

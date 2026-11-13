@@ -78,7 +78,7 @@ with st.sidebar:
     st.markdown(
         "A single **LangGraph** agent runs a reason → act → observe loop with native "
         "tool calling.\n\n"
-        "**Tier 1:** `compare_values` checks amounts, percentages, durations and dates exactly.\n\n"
+        "**Tier 1:** `review_clause` checks amounts, percentages, durations and dates exactly.\n\n"
         "**Tier 2:** the LLM reads the wording to catch changed obligations, rights or venue.\n\n"
         "Each run can be traced in **LangSmith**."
     )

@@ -21,11 +21,10 @@ from .tools import TOOLS
 SYSTEM_PROMPT = """You are a legal-document review agent for a real-estate developer.
 Your job: find every clause where an Agreement for Sale deviates from the standard template.
 
-Procedure (follow it, and work in parallel where you can):
-1. Call list_clauses for 'template' and for the agreement.
-2. For every template clause, call compare_values (exact numeric check) and get_clause
-   for both documents so you can judge the wording.
-3. A clause deviates if: it is missing from the agreement; compare_values reports
+Procedure (put several tool calls in one message wherever you can):
+1. Call list_clauses for 'template'.
+2. Call review_clause for every template clause. It returns both texts and an exact value check.
+3. A clause deviates if: it is missing from the agreement; value_check reports
    values_deviate = true; or the wording changes an obligation, right, venue or condition
    (for example 'shall pay' becoming 'may at its discretion pay', or a different
    arbitration seat), even when all numbers match. Filled-in placeholders such as unit,
@@ -35,7 +34,7 @@ Procedure (follow it, and work in parallel where you can):
 5. Finish with a short summary: how many clauses were checked, how many deviate, and the
    single most important one. Do not call tools in your final message."""
 
-MAX_STEPS = 40
+MAX_STEPS = 100  # graph steps; one model turn plus its tool run is 2 steps
 
 
 def build_graph(llm: BaseChatModel, fallbacks: Sequence[BaseChatModel] = ()):

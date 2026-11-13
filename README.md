@@ -31,7 +31,7 @@ Two tiers, because numbers and wording need different checks:
 
 | Tier | Who | Catches |
 |---|---|---|
-| 1 | `compare_values` tool (regex, exact) | Changed amounts, percentages, durations, areas, dates; missing clauses |
+| 1 | Value check inside `review_clause` (regex, exact) | Changed amounts, percentages, durations, areas, dates; missing clauses |
 | 2 | The LLM reading both clauses | Changed obligations, rights or venue when the numbers match (e.g. "shall pay" → "may, at its sole discretion, pay") |
 
 Tools the agent can call:
@@ -39,8 +39,7 @@ Tools the agent can call:
 | Tool | Purpose |
 |---|---|
 | `list_clauses(document_id)` | Clause keys and titles of the template or an agreement |
-| `get_clause(document_id, clause_key)` | Full clause text, or a MISSING notice |
-| `compare_values(agreement_id, clause_key)` | Exact tier-1 value diff; placeholder clauses (unit, price) may carry filled-in values |
+| `review_clause(agreement_id, clause_key)` | Template text, agreement text (or a MISSING notice) and the exact tier-1 value diff in one call; placeholder clauses (unit, price) may carry filled-in values |
 | `record_finding(clause_key, severity, template_says, agreement_says, explanation)` | Structured output: one call per deviation |
 
 ## Sample agreements (fictional)
