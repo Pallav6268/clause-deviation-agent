@@ -40,13 +40,17 @@ MAX_STEPS = 40
 
 def build_graph(llm: BaseChatModel, fallbacks: Sequence[BaseChatModel] = ()):
     """Compile the agent. If the primary model fails (bad key, outage), each fallback is tried in order."""
-    model = llm.bind_tools(TOOLS)
-    if fallbacks:
-        model = model.with_fallbacks([f.bind_tools(TOOLS) for f in fallbacks])
+    models = [(m.__class__.__name__, m.bind_tools(TOOLS)) for m in (llm, *fallbacks)]
 
     def agent(state: MessagesState) -> dict:
         messages = [SystemMessage(SYSTEM_PROMPT), *state["messages"]]
-        return {"messages": [model.invoke(messages)]}
+        errors = []
+        for name, model in models:
+            try:
+                return {"messages": [model.invoke(messages)]}
+            except Exception as exc:  # try the next provider, but keep every error
+                errors.append(f"{name}: {type(exc).__name__}: {exc}")
+        raise RuntimeError("Every model provider failed:\n- " + "\n- ".join(errors))
 
     graph = StateGraph(MessagesState)
     graph.add_node("agent", agent)

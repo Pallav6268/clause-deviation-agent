@@ -46,3 +46,10 @@ def test_falls_back_when_primary_model_fails():
     state = graph.invoke({"messages": [task_message("A-101")]}, config=run_config())
     findings = {f["clause_key"]: f["severity"] for f in extract_findings(state["messages"])}
     assert findings == EXPECTED["A-101"]
+
+
+def test_reports_every_provider_error_when_all_fail():
+    graph = build_graph(FailingModel(), [FailingModel()])
+    with pytest.raises(RuntimeError, match="Every model provider failed") as info:
+        graph.invoke({"messages": [task_message("A-101")]}, config=run_config())
+    assert str(info.value).count("401 - Authentication Fails") == 2
