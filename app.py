@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import uuid
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -55,7 +56,10 @@ def load_agent(settings: tuple):
 
 
 def settings_fingerprint() -> tuple:
-    return tuple(hashlib.sha256(os.getenv(name, "").encode()).hexdigest()[:12] for name in MODEL_SETTINGS)
+    """Changes when a model setting or the agent code changes, so a redeploy never serves a stale agent."""
+    code = b"".join(p.read_bytes() for p in sorted((Path(__file__).parent / "agent").glob("*.py")))
+    settings = (hashlib.sha256(os.getenv(name, "").encode()).hexdigest()[:12] for name in MODEL_SETTINGS)
+    return (hashlib.sha256(code).hexdigest()[:12], *settings)
 
 
 load_secrets_into_env()
