@@ -65,10 +65,11 @@ and tools and finds the tier-1 deviations only. For the live agent, set one of:
 
 ```bash
 export ANTHROPIC_API_KEY=...   # optional: ANTHROPIC_MODEL (default claude-haiku-5-5)
+export DEEPSEEK_API_KEY=...    # optional: DEEPSEEK_MODEL (default deepseek-chat)
 export GROQ_API_KEY=...        # optional: GROQ_MODEL (default llama-3.3-70b-versatile)
 ```
 
-Model IDs change over time; set `ANTHROPIC_MODEL` / `GROQ_MODEL` to a current one if the default is retired.
+If several keys are set, the order is Claude → DeepSeek → Groq. Model IDs change over time; set `ANTHROPIC_MODEL` / `DEEPSEEK_MODEL` / `GROQ_MODEL` to a current one if the default is retired.
 
 ### Tracing with LangSmith
 
@@ -83,7 +84,7 @@ Every run then appears in LangSmith with each model call and tool call.
 ## Deploy (Streamlit Community Cloud)
 
 1. Fork or use this repo, then create an app at share.streamlit.io with `app.py` as the entry point.
-2. In **Settings → Secrets**, add `ANTHROPIC_API_KEY = "..."` (or `GROQ_API_KEY`), and optionally the LangSmith keys.
+2. In **Settings → Secrets**, add `ANTHROPIC_API_KEY = "..."` (or `DEEPSEEK_API_KEY` / `GROQ_API_KEY`), and optionally the LangSmith keys.
 
 ## Tests
 
@@ -102,7 +103,7 @@ agent/
   values.py      # tier-1 value extraction and diff
   tools.py       # the four tools
   graph.py       # LangGraph StateGraph + system prompt
-  llm.py         # Claude / Groq / demo model selection
+  llm.py         # Claude / DeepSeek / Groq / demo model selection
   demo_model.py  # rule-based stand-in for keyless demo
 data/            # fictional template and agreements
 app.py           # Streamlit UI
