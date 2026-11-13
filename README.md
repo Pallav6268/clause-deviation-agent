@@ -66,7 +66,7 @@ and tools and finds the tier-1 deviations only. For the live agent, set one of:
 ```bash
 export ANTHROPIC_API_KEY=...   # optional: ANTHROPIC_MODEL (default claude-haiku-5-5)
 export DEEPSEEK_API_KEY=...    # optional: DEEPSEEK_MODEL (default deepseek-chat)
-export GROQ_API_KEY=...        # optional: GROQ_MODEL (default llama-3.3-70b-versatile)
+export GROQ_API_KEY=...        # optional: GROQ_MODEL (default openai/gpt-oss-120b)
 ```
 
 If several keys are set, the first in the order Claude → DeepSeek → Groq is used and the rest are automatic fallbacks. Model IDs change over time; set `ANTHROPIC_MODEL` / `DEEPSEEK_MODEL` / `GROQ_MODEL` to a current one if the default is retired.

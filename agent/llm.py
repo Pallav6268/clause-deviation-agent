@@ -23,7 +23,7 @@ from .demo_model import ScriptedAgentModel
 
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 
 
 @dataclass
