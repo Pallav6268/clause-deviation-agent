@@ -2,20 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import uuid
 
 import pandas as pd
 import streamlit as st
-
-# Streamlit Cloud secrets -> environment, before the agent reads them.
-try:
-    for _k, _v in st.secrets.items():
-        if isinstance(_v, str):
-            os.environ.setdefault(_k, _v)
-except Exception:  # no secrets file locally
-    pass
 
 from agent.documents import STORE, TEMPLATE_ID
 from agent.graph import build_graph, extract_findings, message_text, run_config, task_message
@@ -25,15 +18,48 @@ st.set_page_config(page_title="Clause Deviation Agent", page_icon="📄", layout
 
 GITHUB = "https://github.com/Pallav6268/clause-deviation-agent"
 LINKEDIN = "https://www.linkedin.com/in/pallav-kumar-ai"
+MODEL_SETTINGS = (
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_MODEL",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_MODEL",
+    "GROQ_API_KEY",
+    "GROQ_MODEL",
+)
+
+
+def load_secrets_into_env() -> None:
+    """Copy Streamlit secrets (top level or inside any [section]) into the environment.
+
+    Runs on every rerun, so secrets saved after the app started are picked up."""
+    try:
+        secrets = st.secrets.to_dict()
+    except Exception:  # no secrets file (local run)
+        return
+
+    def put(mapping: dict) -> None:
+        for key, value in mapping.items():
+            if isinstance(value, dict):
+                put(value)
+            elif isinstance(value, str) and value.strip():
+                os.environ[key.strip().upper()] = value.strip()
+
+    put(secrets)
 
 
 @st.cache_resource
-def load_agent():
+def load_agent(settings: tuple):
+    # `settings` is only the cache key: the agent is rebuilt when the keys or models change.
     choice = get_model()
     return build_graph(choice.llm), choice
 
 
-graph, choice = load_agent()
+def settings_fingerprint() -> tuple:
+    return tuple(hashlib.sha256(os.getenv(name, "").encode()).hexdigest()[:12] for name in MODEL_SETTINGS)
+
+
+load_secrets_into_env()
+graph, choice = load_agent(settings_fingerprint())
 template = STORE.get(TEMPLATE_ID)
 
 # ---------------------------------------------------------------- sidebar
@@ -53,6 +79,8 @@ with st.sidebar:
         "Each run can be traced in **LangSmith**."
     )
     st.caption(f"Model: {choice.label}")
+    if not choice.live:
+        st.caption("Live mode reads one of these secrets: ANTHROPIC_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY.")
     st.markdown(f"[Source on GitHub]({GITHUB}) · [Pallav Kumar]({LINKEDIN})")
     st.caption("All agreements in this demo are fictional.")
 
