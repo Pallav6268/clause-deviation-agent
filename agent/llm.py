@@ -24,6 +24,8 @@ from .demo_model import ScriptedAgentModel
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+# Free tiers have per-minute token limits; a 429 tells the client how long to wait, so retry instead of failing.
+MAX_RETRIES = 6
 
 
 @dataclass
@@ -46,12 +48,12 @@ def available_models() -> list[tuple[BaseChatModel, str]]:
         from langchain_deepseek import ChatDeepSeek
 
         name = os.getenv("DEEPSEEK_MODEL", DEFAULT_DEEPSEEK_MODEL)
-        models.append((ChatDeepSeek(model=name, temperature=0), f"DeepSeek · {name}"))
+        models.append((ChatDeepSeek(model=name, temperature=0, max_retries=MAX_RETRIES), f"DeepSeek · {name}"))
     if os.getenv("GROQ_API_KEY"):
         from langchain_groq import ChatGroq
 
         name = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
-        models.append((ChatGroq(model=name, temperature=0), f"Groq · {name}"))
+        models.append((ChatGroq(model=name, temperature=0, max_retries=MAX_RETRIES), f"Groq · {name}"))
     return models
 
 
