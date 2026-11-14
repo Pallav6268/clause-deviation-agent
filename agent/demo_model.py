@@ -17,11 +17,19 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
+from .graph import COVERAGE_PREFIX
+
 HIGH_IMPACT = {"consideration", "possession", "delay_compensation", "cancellation_by_allottee", "car_parking"}
 
 
 class ScriptedAgentModel(BaseChatModel):
-    """Deterministic agent policy that emits native tool calls."""
+    """Deterministic agent policy that emits native tool calls.
+
+    ``skip_first_pass`` and ``ignore_coverage`` simulate a careless model in tests: it skips the last
+    clauses on its first pass and, unless told to ignore it, obeys the graph's coverage check."""
+
+    skip_first_pass: int = 0
+    ignore_coverage: bool = False
 
     @property
     def _llm_type(self) -> str:
@@ -53,24 +61,33 @@ class ScriptedAgentModel(BaseChatModel):
 
         compared = {r["args"]["clause_key"]: r["output"] for r in results if r["name"] == "review_clause"}
         if not compared:
-            calls = [call("review_clause", agreement_id=agreement_id, clause_key=k) for k in clauses]
+            first = clauses[: len(clauses) - self.skip_first_pass]
+            calls = [call("review_clause", agreement_id=agreement_id, clause_key=k) for k in first]
             return AIMessage(
-                content=f"Reviewing all {len(clauses)} clauses in parallel: both texts plus an exact value check.",
+                content=f"Reviewing {len(first)} clauses in parallel: both texts plus an exact value check.",
                 tool_calls=calls,
             )
 
-        recorded = any(r["name"] == "record_finding" for r in results)
+        missing = [k for k in clauses if k not in compared]
+        last = messages[-1]
+        nudged = isinstance(last, HumanMessage) and str(last.content).startswith(COVERAGE_PREFIX)
+        if missing and nudged and not self.ignore_coverage:
+            calls = [call("review_clause", agreement_id=agreement_id, clause_key=k) for k in missing]
+            return AIMessage(content=f"Reviewing the {len(missing)} clause(s) I skipped.", tool_calls=calls)
+
+        recorded = {r["args"]["clause_key"] for r in results if r["name"] == "record_finding"}
         deviating = [k for k in clauses if _deviates(compared.get(k, {}))]
-        if deviating and not recorded:
-            calls = [call("record_finding", **_finding(k, compared[k])) for k in deviating]
+        to_record = [k for k in deviating if k not in recorded]
+        if to_record:
+            calls = [call("record_finding", **_finding(k, compared[k])) for k in to_record]
             return AIMessage(
-                content=f"{len(deviating)} clause(s) show a value change or are missing. Recording them.",
+                content=f"{len(to_record)} clause(s) show a value change or are missing. Recording them.",
                 tool_calls=calls,
             )
 
         top = deviating[0].replace("_", " ") if deviating else "none"
         summary = (
-            f"Checked {len(clauses)} clauses of {agreement_id}. "
+            f"Checked {len(compared)} of {len(clauses)} clauses of {agreement_id}. "
             f"{len(deviating)} {'clause deviates' if len(deviating) == 1 else 'clauses deviate'} "
             "on values or are missing. "
             f"Most important: {top}.\n\n"

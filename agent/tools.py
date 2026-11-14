@@ -13,6 +13,13 @@ MISSING = "MISSING: this clause is not present in the document."
 
 
 @tool
+def list_agreements() -> list[str]:
+    """List the IDs of the agreements stored in this app, including any the user pasted.
+    The standard template itself has the ID 'template'."""
+    return [d for d in STORE.ids() if d != TEMPLATE_ID]
+
+
+@tool
 def list_clauses(document_id: str) -> list[dict]:
     """List the clauses of a document as {key, title}. Use document_id='template'
     for the standard template, or the agreement ID (for example 'B-204')."""
@@ -55,4 +62,6 @@ def record_finding(
     return f"Recorded {severity} finding for '{clause_key}'."
 
 
-TOOLS = [list_clauses, review_clause, record_finding]
+REVIEW_TOOLS = [list_clauses, review_clause, record_finding]
+CHAT_TOOLS = [list_agreements, list_clauses, review_clause]
+TOOLS = REVIEW_TOOLS

@@ -2,7 +2,8 @@
 
 A single AI agent that compares an **Agreement for Sale** against a real-estate developer's
 standard template, records every deviating clause with its severity and impact, and shows
-its reasoning step by step.
+its reasoning step by step. A **Chat** tab lets you ask about the documents in plain words
+("What changed in B-204's cancellation clause?", "Compare the possession clause in A-101 and B-204").
 
 Built with **LangGraph** (reason → act → observe loop), **native tool calling**,
 **LangSmith** tracing and a **Streamlit** UI.
@@ -24,8 +25,14 @@ flowchart LR
     S((start)) --> A[agent<br/>LLM decides next step]
     A -- tool calls --> T[tools<br/>run in parallel]
     T -- results --> A
+    A -. skipped a clause? .-> C[coverage check]
+    C -. review these .-> A
     A -- final answer --> E((end))
 ```
+
+The **coverage check** is plain code, not the LLM: when the agent tries to finish, the graph compares
+the clauses it actually reviewed with the template. If any were skipped, it sends the agent back with
+the list (at most twice). The results page shows "Clauses reviewed: N / 11", so a partial review is visible.
 
 Two tiers, because numbers and wording need different checks:
 
@@ -40,7 +47,10 @@ Tools the agent can call:
 |---|---|
 | `list_clauses(document_id)` | Clause keys and titles of the template or an agreement |
 | `review_clause(agreement_id, clause_key)` | Template text, agreement text (or a MISSING notice) and the exact tier-1 value diff in one call; placeholder clauses (unit, price) may carry filled-in values |
-| `record_finding(clause_key, severity, template_says, agreement_says, explanation)` | Structured output: one call per deviation |
+| `record_finding(clause_key, severity, template_says, agreement_says, explanation)` | Structured output: one call per deviation (review only) |
+| `list_agreements()` | IDs of the stored agreements, including pasted ones (chat only) |
+
+Chat mode uses the same loop with the read-only tools and a prompt that answers only from the documents.
 
 ## Sample agreements (fictional)
 
