@@ -19,6 +19,7 @@ from agent.graph import (
     build_graph,
     chat_config,
     extract_findings,
+    fallback_errors,
     message_text,
     reviewed_clauses,
     run_config,
@@ -193,6 +194,7 @@ with review_tab:
             "steps": step,
             "reviewed": len(reviewed_clauses(messages)),
             "model": answered_by(messages),
+            "fallback_errors": fallback_errors(messages),
         }
 
     result = st.session_state.get("result")
@@ -211,6 +213,8 @@ with review_tab:
             st.warning("The agent did not review every clause, so this list may be incomplete.")
         if result["model"]:
             st.caption(f"Answered by: {result['model']}")
+        for err in result.get("fallback_errors", []):
+            st.caption(f"⚠️ Fell back because this provider failed: {err}")
         if findings:
             df = pd.DataFrame(findings)[["clause_key", "severity", "template_says", "agreement_says", "explanation"]]
             df.columns = ["Clause", "Severity", "Template says", "Agreement says", "Impact"]
@@ -271,6 +275,8 @@ with chat_tab:
                         model = answered_by(messages)
                         label = f"Used {used} tool call{'s' if used != 1 else ''}" + (f" · {model}" if model else "")
                         steps.update(label=label, state="complete")
+                        for err in fallback_errors(messages):
+                            steps.caption(f"⚠️ Fell back because this provider failed: {err}")
                         answer = message_text(messages[-1]).strip() or "_(no answer)_"
                         st.markdown(answer)
                         history.append(AIMessage(answer))

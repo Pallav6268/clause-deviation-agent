@@ -12,6 +12,7 @@ from agent.graph import (
     build_graph,
     chat_config,
     extract_findings,
+    fallback_errors,
     reviewed_clauses,
     run_config,
     task_message,
@@ -59,6 +60,7 @@ def test_falls_back_when_primary_model_fails():
     state = graph.invoke({"messages": [task_message("A-101")]}, config=run_config())
     findings = {f["clause_key"]: f["severity"] for f in extract_findings(state["messages"])}
     assert findings == EXPECTED["A-101"]
+    assert "FailingModel: RuntimeError: 401 - Authentication Fails" in fallback_errors(state["messages"])
 
 
 def test_reports_every_provider_error_when_all_fail():

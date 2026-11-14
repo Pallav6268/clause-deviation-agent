@@ -72,9 +72,13 @@ def build_graph(
         errors = []
         for name, model in models:
             try:
-                return {"messages": [model.invoke(messages)]}
+                reply = model.invoke(messages)
             except Exception as exc:  # try the next provider, but keep every error
-                errors.append(f"{name}: {type(exc).__name__}: {exc}")
+                errors.append(f"{name}: {type(exc).__name__}: {str(exc)[:300]}")
+                continue
+            if errors:  # a fallback answered: keep why the earlier providers failed, for the UI
+                reply.response_metadata = {**(reply.response_metadata or {}), "fallback_errors": errors}
+            return {"messages": [reply]}
         raise RuntimeError("Every model provider failed:\n- " + "\n- ".join(errors))
 
     def coverage(state: MessagesState) -> dict:
@@ -140,6 +144,14 @@ def missing_clauses(messages) -> list[str]:
         return []
     done = reviewed_clauses(messages)
     return [key for key in STORE.get(TEMPLATE_ID).clauses if key not in done]
+
+
+def fallback_errors(messages) -> list[str]:
+    """Why earlier providers failed on the last model reply that needed a fallback."""
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage) and (msg.response_metadata or {}).get("fallback_errors"):
+            return msg.response_metadata["fallback_errors"]
+    return []
 
 
 def answered_by(messages) -> str:
