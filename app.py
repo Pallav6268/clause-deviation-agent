@@ -34,10 +34,14 @@ LINKEDIN = "https://www.linkedin.com/in/pallav-kumar-ai"
 MODEL_SETTINGS = (
     "ANTHROPIC_API_KEY",
     "ANTHROPIC_MODEL",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "GEMINI_MODEL",
     "DEEPSEEK_API_KEY",
     "DEEPSEEK_MODEL",
     "GROQ_API_KEY",
     "GROQ_MODEL",
+    "MODEL_ORDER",
 )
 
 
@@ -111,7 +115,9 @@ with st.sidebar:
     )
     st.caption(f"Model: {choice.label}")
     if not choice.live:
-        st.caption("Live mode reads one of these secrets: ANTHROPIC_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY.")
+        st.caption(
+            "Live mode reads one of these secrets: ANTHROPIC_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY."
+        )
     st.markdown(f"[Source on GitHub]({GITHUB}) · [Pallav Kumar]({LINKEDIN})")
     st.caption("All agreements in this demo are fictional.")
 

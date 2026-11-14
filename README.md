@@ -74,11 +74,12 @@ and tools and finds the tier-1 deviations only. For the live agent, set one of:
 
 ```bash
 export ANTHROPIC_API_KEY=...   # optional: ANTHROPIC_MODEL (default claude-haiku-5-5)
+export GEMINI_API_KEY=...      # optional: GEMINI_MODEL (default gemini-3.5-flash-lite)
 export DEEPSEEK_API_KEY=...    # optional: DEEPSEEK_MODEL (default deepseek-chat)
 export GROQ_API_KEY=...        # optional: GROQ_MODEL (default openai/gpt-oss-120b)
 ```
 
-If several keys are set, the first in the order Claude → DeepSeek → Groq is used and the rest are automatic fallbacks. Model IDs change over time; set `ANTHROPIC_MODEL` / `DEEPSEEK_MODEL` / `GROQ_MODEL` to a current one if the default is retired.
+If several keys are set, the first in the order Claude → Gemini → DeepSeek → Groq is used and the rest are automatic fallbacks (on a rejected key, an empty balance or a rate limit). Set `MODEL_ORDER`, e.g. `gemini,groq`, to change the order or leave providers out. Model IDs change over time; set `ANTHROPIC_MODEL` / `GEMINI_MODEL` / `DEEPSEEK_MODEL` / `GROQ_MODEL` to a current one if the default is retired. Gemini and Groq both have free tiers.
 
 ### Tracing with LangSmith
 
@@ -93,7 +94,7 @@ Every run then appears in LangSmith with each model call and tool call.
 ## Deploy (Streamlit Community Cloud)
 
 1. Fork or use this repo, then create an app at share.streamlit.io with `app.py` as the entry point.
-2. In **Settings → Secrets**, add `ANTHROPIC_API_KEY = "..."` (or `DEEPSEEK_API_KEY` / `GROQ_API_KEY`), and optionally the LangSmith keys.
+2. In **Settings → Secrets**, add `ANTHROPIC_API_KEY = "..."` (or `GEMINI_API_KEY` / `DEEPSEEK_API_KEY` / `GROQ_API_KEY`), and optionally the LangSmith keys.
 
 ## Tests
 
