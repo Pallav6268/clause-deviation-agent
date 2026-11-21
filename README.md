@@ -5,8 +5,11 @@ standard template, records every deviating clause with its severity and impact, 
 its reasoning step by step. A **Chat** tab lets you ask about the documents in plain words
 ("What changed in B-204's cancellation clause?", "Compare the possession clause in A-101 and B-204").
 
-Built with **LangGraph** (reason → act → observe loop), **native tool calling**,
-**LangSmith** tracing and a **Streamlit** UI.
+An **Evidence** tab uses Google's **LangExtract** to pull the key terms from both documents and
+pin each one to its exact character span, so every difference is highlighted in the source text.
+
+Built with **LangGraph** (reason → act → observe loop), **native tool calling**, **LangExtract**
+(source-grounded extraction), **LangSmith** tracing and a **Streamlit** UI.
 
 > **Live demo:** https://clause-deviation-agent.streamlit.app
 
@@ -51,6 +54,36 @@ Tools the agent can call:
 | `list_agreements()` | IDs of the stored agreements, including pasted ones (chat only) |
 
 Chat mode uses the same loop with the read-only tools and a prompt that answers only from the documents.
+
+### Evidence: source-grounded key terms (LangExtract)
+
+A finding is only useful if a reviewer can see where it came from. The Evidence tab runs
+[LangExtract](https://github.com/google/langextract) over the template and the agreement with a
+few-shot prompt for nine key terms: payment milestones, possession date, grace period, delay
+compensation (amount and whether it is *mandatory* or *discretionary*), maintenance advance,
+forfeiture, refund period, car parking and arbitration seat.
+
+- Each term comes back with its **character offsets** in the source. LangExtract aligns the
+  quoted text to the document, so a quote the model invented has no span and is visible as ungrounded.
+- Terms are matched (milestones by stage) and compared, then highlighted side by side:
+  same, changed, missing or extra.
+- "Quotes matching source exactly" = share of terms where `text[start:end]` equals the quote.
+
+LangExtract calls the same model chain as the agent through a small provider wrapper
+(`LangChainExtractor`), so Claude, Gemini, DeepSeek and Groq all work. With no key, a rule-based
+provider answers LangExtract's prompt in the same JSON format, so chunking, parsing and alignment
+still run end to end.
+
+Score it against the planted deviations:
+
+```bash
+python scripts/eval_grounding.py          # configured live model, or demo provider with no key
+python scripts/eval_grounding.py --demo   # rule-based provider
+```
+
+Demo provider result: all 9 planted deviations found, 0 false flags (precision 9/9, recall 9/9),
+and 100% of quotes reproduce their source span. Live-model numbers depend on the model; run the
+script to measure them.
 
 ## Sample agreements (fictional)
 
@@ -102,8 +135,9 @@ Every run then appears in LangSmith with each model call and tool call.
 pytest
 ```
 
-The tests cover clause parsing, value extraction and full graph runs driven by the
-scripted model, so they need no API key. CI runs lint and tests on every push.
+The tests cover clause parsing, value extraction, full graph runs driven by the
+scripted model, and LangExtract grounding (every span matches its quote; the diff flags exactly
+the planted deviations), so they need no API key. CI runs lint and tests on every push.
 
 ## Project layout
 
@@ -111,11 +145,14 @@ scripted model, so they need no API key. CI runs lint and tests on every push.
 agent/
   documents.py   # Markdown -> clauses
   values.py      # tier-1 value extraction and diff
+  grounding.py   # LangExtract key-term extraction, source spans, diff, highlighting
   tools.py       # the four tools
   graph.py       # LangGraph StateGraph + system prompt
   llm.py         # Claude / DeepSeek / Groq / demo model selection
   demo_model.py  # rule-based stand-in for keyless demo
 data/            # fictional template and agreements
+scripts/
+  eval_grounding.py  # precision / recall / grounding rate vs planted deviations
 app.py           # Streamlit UI
 tests/
 ```

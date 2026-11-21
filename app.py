@@ -25,6 +25,7 @@ from agent.graph import (
     run_config,
     task_message,
 )
+from agent.grounding import diff_terms, extract_terms, extraction_model, grounding_rate, highlight
 from agent.llm import get_model
 
 st.set_page_config(page_title="Clause Deviation Agent", page_icon="📄", layout="wide")
@@ -133,7 +134,7 @@ if not choice.live:
         icon="ℹ️",
     )
 
-review_tab, chat_tab = st.tabs(["Review an agreement", "Chat with the agent"])
+review_tab, evidence_tab, chat_tab = st.tabs(["Review an agreement", "Evidence (LangExtract)", "Chat with the agent"])
 
 # ================================================================ review tab
 with review_tab:
@@ -236,6 +237,71 @@ with review_tab:
         if result["summary"]:
             st.markdown("**Agent summary**")
             st.write(result["summary"])
+
+
+# ================================================================ evidence tab
+@st.cache_data(show_spinner=False)
+def grounded_terms(text: str, settings: tuple) -> list:
+    # `settings` is only the cache key, so a model change re-runs the extraction.
+    return extract_terms(text, extraction_model()[0])
+
+
+def raw_text(doc_id: str) -> str:
+    doc = STORE.get(doc_id)
+    body = "\n\n".join(f"## {c.title}\n{c.text}" for c in doc.clauses.values())
+    return f"# {doc.title}\n\n{body}"
+
+
+with evidence_tab:
+    st.write(
+        "Google's **LangExtract** pulls the key commercial terms out of the template and the agreement and maps "
+        "every one back to its exact character span, so each difference is highlighted where it sits in the text."
+    )
+    ev_id = st.radio("Agreement", STORE.agreement_ids(), horizontal=True, key="evidence_agreement")
+    if st.button("Extract and compare", type="primary"):
+        fp = settings_fingerprint()
+        t_text, a_text = raw_text(TEMPLATE_ID), raw_text(ev_id)
+        with st.spinner("Extracting key terms…"):
+            try:
+                t_terms, a_terms = grounded_terms(t_text, fp), grounded_terms(a_text, fp)
+                st.session_state["evidence"] = (ev_id, t_text, a_text, t_terms, a_terms, None)
+            except Exception as exc:  # surface model/API errors in the UI
+                st.session_state["evidence"] = (ev_id, t_text, a_text, [], [], f"{type(exc).__name__}: {exc}")
+
+    ev = st.session_state.get("evidence")
+    if ev and ev[5]:
+        st.error(f"Extraction failed.\n\n{ev[5]}")
+    elif ev:
+        ev_id, t_text, a_text, t_terms, a_terms, _ = ev
+        diffs = diff_terms(t_terms, a_terms)
+        changed = [d for d in diffs if d.status != "same"]
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Key terms in agreement", len(a_terms))
+        m2.metric("Differences", len(changed))
+        m3.metric("Quotes matching source exactly", f"{grounding_rate(a_text, a_terms):.0%}")
+        st.caption(f"Extracted by: {extraction_model()[1]}")
+        rows = [
+            {
+                "Term": d.label,
+                "Status": d.status,
+                "Change": "; ".join(d.notes),
+                "Template text": d.template.text if d.template else "",
+                "Agreement text": d.agreement.text if d.agreement else "",
+                "Agreement chars": f"{d.agreement.start}–{d.agreement.end}"
+                if d.agreement and d.agreement.grounded
+                else "",
+            }
+            for d in diffs
+        ]
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+        st.caption("Highlights: green = same · orange = changed · red = missing in agreement · blue = extra")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Standard template**")
+            st.html(highlight(t_text, [(d.template, d.status) for d in diffs if d.template]))
+        with c2:
+            st.markdown(f"**Agreement {ev_id}**")
+            st.html(highlight(a_text, [(d.agreement, d.status) for d in diffs if d.agreement]))
 
 # ================================================================ chat tab
 with chat_tab:
